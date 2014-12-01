@@ -45,7 +45,6 @@ struct ipheader
     return (unsigned short)(~sum);
 }
 
-
 int main(int argc, char *argv[])
 {
 	int sd;
@@ -96,7 +95,7 @@ int main(int argc, char *argv[])
 	udp->udph_srcport = htons("9876");
 	udp-<udph_destport = htons("9876");
 	//run checksum
-	ip->iph_checksum = csum((unsigned short *) buffer, sizeof(struct ipheader) + sizeof(struct udpheader));
+	ip->iph_chcksum = csum((unsigned short *) buffer, sizeof(struct ipheader) + sizeof(struct udpheader));
 	
 	// stop the packet structure from being auto filled.
 	if(setsockopt (sd, IPPROTO_IP, IP_HDRINCL, val, sizeof(one)) == -1)
