@@ -86,12 +86,41 @@ int main(int argc, char *argv[])
 	ip->iph_ver = 4;
 	ip->iph_tos = 16;
 	ip->iph_len = sizeof(struct ipheader)+ sizeof( struct udpheader);
-	ip->ident = htons(54321);
+	ip->iph_ident = htons(54321);
 	ip->iph_ttl = 64;
 	ip->iph_protocol = 17;
 	ip->iph_sourceip = inet_addr("172.0.0.1");
 	ip->iph_destip = inet_addr("172.0.0.1");
 	
 	//build udp header info
+	udp->udph_srcport = htons("9876");
+	udp-<udph_destport = htons("9876");
+	//run checksum
+	ip->iph_checksum = csum((unsigned short *) buffer, sizeof(struct ipheader) + sizeof(struct udpheader));
 	
+	// stop the packet structure from being auto filled.
+	if(setsockopt (sd, IPPROTO_IP, IP_HDRINCL, val, sizeof(one)) == -1)
+	{
+		perror("setsockopt Failed");
+	}
+	else
+	{
+		printf("packet head was manually filled \n");
+	}
+	
+	int count;
+	for(count = 1; count <=20; count++)
+	{
+		if(sendto(sd, buffer, ip->iph_len, 0, (struct sockaddr *)&sin, sizeof(sin))==-1)
+		{
+			perror("sending broke");
+		}
+		else
+		{
+			printf("count #%u worked\n",count);
+			sleep(2);
+		}
+	}
+	close(sd);
+	return 0;
 }
