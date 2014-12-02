@@ -108,7 +108,7 @@ int main (void)
     iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data);
     iph->id = htonl (54321); //Id of this packet
     iph->frag_off = 0;
-    iph->ttl = 255;
+    iph->ttl = 3;
     iph->protocol = IPPROTO_UDP;
     iph->check = 0;      //Set to 0 before calculating checksum
     iph->saddr = inet_addr ( source_ip );    //Spoof the source ip address
