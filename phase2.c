@@ -93,9 +93,9 @@ int main(int argc, char *argv[])
 	
 	//build udp header info
 	udp->udph_srcport = htons("9876");
-	udp-<udph_destport = htons("9876");
+	udp->udph_destport = htons("9876");
 	//run checksum
-	ip->iph_chcksum = csum((unsigned short *) buffer, sizeof(struct ipheader) + sizeof(struct udpheader));
+	ip->iph_chksum = csum((unsigned short *) buffer, sizeof(struct ipheader) + sizeof(struct udpheader));
 	
 	// stop the packet structure from being auto filled.
 	if(setsockopt (sd, IPPROTO_IP, IP_HDRINCL, val, sizeof(one)) == -1)
