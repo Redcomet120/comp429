@@ -11,8 +11,19 @@
 #include <unistd.h> 
 #include <sys/time.h>
 #include <sys/prctl.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <ifaddrs.h>
+#include <errno.h>
 
 #define RANDPATH "/dev/urandom"
+
+int countChars( char* s, char c )
+{
+    return *s == '\0'
+              ? 0
+              : countChars( s + 1, c ) + (*s == c);
+}
 
 /*  Just returns current time as double, with most possible precision...  */
 double get_time (void) {
@@ -78,7 +89,59 @@ uint16_t ip_checksum(void* vdata,size_t length) {
  
 int main(int argc, char* argv[])
 {
-    
+ 
+    struct ifaddrs *myaddrs, *ifa;
+    void *in_addr;
+    char source_ip[64];
+
+    if(getifaddrs(&myaddrs) != 0)
+    {
+        perror("getifaddrs");
+        exit(1);
+    }
+
+    for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
+    {
+        if (ifa->ifa_addr == NULL)
+            continue;
+        if (!(ifa->ifa_flags & IFF_UP))
+            continue;
+
+        switch (ifa->ifa_addr->sa_family)
+        {
+            case AF_INET:
+            {
+                struct sockaddr_in *s4 = (struct sockaddr_in *)ifa->ifa_addr;
+                in_addr = &s4->sin_addr;
+                break;
+            }
+
+            case AF_INET6:
+            {
+                struct sockaddr_in6 *s6 = (struct sockaddr_in6 *)ifa->ifa_addr;
+                in_addr = &s6->sin6_addr;
+                break;
+            }
+
+            default:
+                continue;
+        }
+
+        if (!inet_ntop(ifa->ifa_addr->sa_family, in_addr, source_ip, sizeof(source_ip)))
+        {
+            printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+        }
+        else
+        {
+            //printf("%s: %s\n", ifa->ifa_name, buf2);
+            int c = countChars(source_ip,'.');
+            if (strncmp(source_ip,"127",3) != 0  && c == 3)
+            	break;
+        }
+    }
+    freeifaddrs(myaddrs);
+    printf("%s\n", source_ip);
+   
     unsigned int rand;
     FILE *f;
     if (argc != 9){
@@ -97,6 +160,8 @@ int main(int argc, char* argv[])
     int ttl = atoi(argv[6]);
     int sleep_time = atoi(argv[7]);
     int icmp_num = atoi(argv[8]);
+    printf("%d\n",load_size);
+    //exit(0);
 
     double t1,t2;    
     int rc = -1;
@@ -121,16 +186,19 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    
+    struct iphdr *iph; 
+    struct udphdr *udph;   
     //Datagram to represent the packet
-    char datagram[4096] , word[load_size], source_ip[32] , *data;
+    //int size = load_size + sizeof(struct iphdr) + sizeof(struct udphdr);
+    int new_size =  load_size + 1;
+    char datagram[4096], word[new_size], /*source_ip[32],*/ *data;
     //change datagram size to sizeofdata maybe
     //zero out the packet buffer
     memset (datagram, 0, 4096);
-    memset (word, 0, load_size);
-     
+    memset (word, 0, new_size);
+    //word = malloc(sizeof(char) * load_size);     
     //IP header
-    struct iphdr *iph = (struct iphdr *) datagram;
+    iph = (struct iphdr *) datagram;
 
     //ICMP stuff
     struct icmphdr* icmphdr = NULL;
@@ -138,7 +206,7 @@ int main(int argc, char* argv[])
     char rbuf[sizeof(struct iphdr) + sizeof(struct icmp)];  
 
     //UDP header
-    struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct ip));
+    udph = (struct udphdr *) (datagram + sizeof (struct iphdr));
      
     struct sockaddr_in sin, addr;
        
@@ -147,26 +215,34 @@ int main(int argc, char* argv[])
 
     if (strcmp(entropy,"H") == 0)
     {
+        printf("YAHOO\n");
 	f = fopen(RANDPATH, "r");
         for (i = 0; i < load_size; i++){
             fread(&rand,sizeof(rand),1,f);
-    	    word[i] = (char)rand%2;
+            int temp = (int)rand%2;
+            if (temp == 0)
+    	    	word[i] = '0';
+	    else
+		word[i] = '1';
         }
         fclose(f);
     }
     else if (strcmp(entropy,"L") == 0)
     {
     	for (i = 0; i < load_size; i++){
-            word[i] = (char)0;
+            word[i] = '0';
         }
     }
-    strcpy(data , "ART");
+
+    word[load_size] = '\0';
+    int k = strlen(word);
+    printf("%d\n",k);
+    //exit(0);
+    strcpy(data , word);
      
     //some address resolution
-    strcpy(source_ip , "192.168.1.2");
-     
     sin.sin_family = AF_INET;
-    sin.sin_port = htons(80);
+    sin.sin_port = dest_port;
     sin.sin_addr.s_addr = inet_addr (dest_IP);
      
     //Fill in the IP Header
@@ -174,16 +250,16 @@ int main(int argc, char* argv[])
     iph->version = 4;
     iph->tos = 0;
     iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data);
-    iph->id = htonl (54321); //Id of this packet
+    iph->id = htons (0); //Id of this packet
     iph->frag_off = 0;
     iph->ttl = ttl;
     iph->protocol = IPPROTO_UDP;
-    iph->check = 0;      //Set to 0 before calculating checksum
+    //iph->check = 0;      //Set to 0 before calculating checksum
     iph->saddr = inet_addr ( source_ip );    //Spoof the source ip address
-    iph->daddr = sin.sin_addr.s_addr;
+    iph->daddr = inet_addr (dest_IP); //sin.sin_addr.s_addr;
      
     //Ip checksum
-    iph->check = ip_checksum ((unsigned short *) datagram, iph->tot_len);
+    iph->check = ip_checksum ((unsigned short *) iph, sizeof(struct iphdr));
      
     //UDP header
     udph->source = htons (6666);
@@ -212,7 +288,7 @@ int main(int argc, char* argv[])
         prctl(PR_SET_PDEATHSIG, SIGHUP); //kill this process when parent exits
         //send initial packet
         sendto(t, buf, sizeof(struct icmphdr), 0 /* flags */, (struct sockaddr*)&addr, sizeof(addr));
-	
+	sleep(5);
 	for(i = 0; i < load_num; i++){
         //Send the packet
            if (sendto (s, datagram, iph->tot_len ,  0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
@@ -227,7 +303,7 @@ int main(int argc, char* argv[])
         }
         for (i = 0; i < icmp_num; i++){
            //Send final packets
-           sendto(t, buf, sizeof(struct icmphdr), 0 /* flags */, (struct sockaddr*)&addr, sizeof(addr));
+           sendto(t, buf, sizeof(struct icmphdr), 0, (struct sockaddr*)&addr, sizeof(addr));
            sleep(sleep_time);
         }
         close(s);
@@ -250,7 +326,7 @@ int main(int argc, char* argv[])
            if (count == 2){
                 t2 = get_time();
                 printf("SUCCESS\n");
-                printf("%s %f\n",entropy,t2-t1);
+                printf("%s %f\n",entropy,t2-t1-5);
 		close(s);
                 close(t);
 		exit(0);
