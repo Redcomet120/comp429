@@ -326,7 +326,9 @@ int main(int argc, char* argv[])
            if (count == 2){
                 t2 = get_time();
                 printf("SUCCESS\n");
-                printf("%s %f\n",entropy,t2-t1-5);
+		double s = t2-t1;
+		s -= 5.0
+                printf("%s %f\n",entropy,s);
 		close(s);
                 close(t);
 		exit(0);
