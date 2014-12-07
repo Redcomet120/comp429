@@ -248,12 +248,12 @@ int main(int argc, char* argv[])
     //Fill in the IP Header
     iph->ihl = 5;
     iph->version = 4;
-    iph->tos = 0;
+    iph->tos = 16;
     iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data);
-    iph->id = htons (0); //Id of this packet
+    iph->id = htons (5000); //Id of this packet
     iph->frag_off = 0;
     iph->ttl = ttl;
-    iph->protocol = IPPROTO_UDP;
+    iph->protocol = 17; //IPPROTO_UDP
     //iph->check = 0;      //Set to 0 before calculating checksum
     iph->saddr = inet_addr ( source_ip );    //Spoof the source ip address
     iph->daddr = inet_addr (dest_IP); //sin.sin_addr.s_addr;
@@ -288,7 +288,6 @@ int main(int argc, char* argv[])
         prctl(PR_SET_PDEATHSIG, SIGHUP); //kill this process when parent exits
         //send initial packet
         sendto(t, buf, sizeof(struct icmphdr), 0 /* flags */, (struct sockaddr*)&addr, sizeof(addr));
-	sleep(5);
 	for(i = 0; i < load_num; i++){
         //Send the packet
            if (sendto (s, datagram, iph->tot_len ,  0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
@@ -327,7 +326,6 @@ int main(int argc, char* argv[])
                 t2 = get_time();
                 printf("SUCCESS\n");
 		double s = t2-t1;
-		s -= 5.0
                 printf("%s %f\n",entropy,s);
 		close(s);
                 close(t);
