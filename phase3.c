@@ -1,12 +1,12 @@
 
 #include <signal.h>
-#include <stdio.h> //for printf
-#include <string.h> //memset
-#include <sys/socket.h>    //for socket ofcourse
-#include <stdlib.h> //for exit(0);
-#include <errno.h> //For errno - the error number
-#include <netinet/udp.h>   //Provides declarations for udp header
-#include <netinet/ip.h>    //Provides declarations for ip header
+#include <stdio.h> 
+#include <string.h> 
+#include <sys/socket.h> 
+#include <stdlib.h>
+#include <errno.h> 
+#include <netinet/udp.h>   
+#include <netinet/ip.h> 
 #include <netinet/ip_icmp.h>
 #include <unistd.h> 
 #include <sys/time.h>
@@ -14,11 +14,11 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <ifaddrs.h>
-#include <errno.h>
 
 #define RANDPATH "/dev/urandom"
 
-int countChars( char* s, char c )
+/* used to get the Source IP*/
+int countChars( char* s, char c ) 
 {
     return *s == '\0'
               ? 0
@@ -34,7 +34,7 @@ double get_time (void) {
 	return d;
 }
 
-
+/* used to calculate checksum */
 uint16_t ip_checksum(void* vdata,size_t length) {
     // Cast the data pointer to one that can be indexed.
     char* data=(char*)vdata;
@@ -100,6 +100,7 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
+    //for loop used to get correct source IP
     for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next)
     {
         if (ifa->ifa_addr == NULL)
@@ -133,17 +134,16 @@ int main(int argc, char* argv[])
         }
         else
         {
-            //printf("%s: %s\n", ifa->ifa_name, buf2);
-            int c = countChars(source_ip,'.');
+            int c = countChars(source_ip,'.'); //used to make sure it is IPv4 and not loopback
             if (strncmp(source_ip,"127",3) != 0  && c == 3)
             	break;
         }
     }
     freeifaddrs(myaddrs);
-    printf("%s\n", source_ip);
+    printf("Source IP: %s\n", source_ip);
    
     unsigned int rand;
-    FILE *f;
+    FILE *f;  //used for urandom
     if (argc != 9){
        printf("Usage: %s <IP Address>\n",argv[0]);
        exit(1);
@@ -160,15 +160,14 @@ int main(int argc, char* argv[])
     int ttl = atoi(argv[6]);
     int sleep_time = atoi(argv[7]);
     int icmp_num = atoi(argv[8]);
-    printf("%d\n",load_size);
-    //exit(0);
 
     double t1,t2;    
     int rc = -1;
     int i;
     struct sockaddr_in raddr;
     socklen_t raddr_len;
-    //Create a raw socket of type IPPROTO
+
+    //Raw socket for UDP packets
     int s = socket (AF_INET, SOCK_RAW, IPPROTO_RAW);
      
     if(s == -1)
@@ -177,6 +176,8 @@ int main(int argc, char* argv[])
         perror("Failed to create raw socket");
         exit(1);
     }
+
+    //RAW socket for ICMP packets
     int t = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 
     if(t == -1)
@@ -188,19 +189,15 @@ int main(int argc, char* argv[])
 
     struct iphdr *iph; 
     struct udphdr *udph;   
-    //Datagram to represent the packet
-    //int size = load_size + sizeof(struct iphdr) + sizeof(struct udphdr);
     int new_size =  load_size + 1;
-    char datagram[4096], word[new_size], /*source_ip[32],*/ *data;
-    //change datagram size to sizeofdata maybe
-    //zero out the packet buffer
+    char datagram[4096], word[new_size], *data;
     memset (datagram, 0, 4096);
     memset (word, 0, new_size);
-    //word = malloc(sizeof(char) * load_size);     
+    
     //IP header
     iph = (struct iphdr *) datagram;
 
-    //ICMP stuff
+    //ICMP
     struct icmphdr* icmphdr = NULL;
     char buf[sizeof(struct icmp)]; 
     char rbuf[sizeof(struct iphdr) + sizeof(struct icmp)];  
@@ -213,9 +210,9 @@ int main(int argc, char* argv[])
     //Data part
     data = datagram + sizeof(struct iphdr) + sizeof(struct udphdr);
 
+    //fill the data part whether it is high or low entropy
     if (strcmp(entropy,"H") == 0)
     {
-        printf("YAHOO\n");
 	f = fopen(RANDPATH, "r");
         for (i = 0; i < load_size; i++){
             fread(&rand,sizeof(rand),1,f);
@@ -235,28 +232,24 @@ int main(int argc, char* argv[])
     }
 
     word[load_size] = '\0';
-    int k = strlen(word);
-    printf("%d\n",k);
-    //exit(0);
     strcpy(data , word);
      
-    //some address resolution
     sin.sin_family = AF_INET;
     sin.sin_port = dest_port;
     sin.sin_addr.s_addr = inet_addr (dest_IP);
      
-    //Fill in the IP Header
+    //IP header being filled
     iph->ihl = 5;
     iph->version = 4;
     iph->tos = 16;
     iph->tot_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data);
-    iph->id = htons (5000); //Id of this packet
+    iph->id = htons (5000);
     iph->frag_off = 0;
     iph->ttl = ttl;
     iph->protocol = 17; //IPPROTO_UDP
-    //iph->check = 0;      //Set to 0 before calculating checksum
-    iph->saddr = inet_addr ( source_ip );    //Spoof the source ip address
-    iph->daddr = inet_addr (dest_IP); //sin.sin_addr.s_addr;
+    iph->check = 0;   //Initially set to 0
+    iph->saddr = inet_addr (source_ip); 
+    iph->daddr = inet_addr (dest_IP);
      
     //Ip checksum
     iph->check = ip_checksum ((unsigned short *) iph, sizeof(struct iphdr));
@@ -264,32 +257,30 @@ int main(int argc, char* argv[])
     //UDP header
     udph->source = htons (6666);
     udph->dest = htons (dest_port);
-    udph->len = htons(8 + strlen(data)); //udp header size
-    udph->check = 0; //leave checksum 0 now, filled later by pseudo header
+    udph->len = htons(8 + strlen(data));
+    udph->check = 0;
     
     //create icmp message
-    
     icmphdr = (struct icmphdr*)buf;
-    // first, clear out the ICMP header.
     memset(icmphdr, 0, sizeof(struct icmphdr));
-    // now, fill in the parameters for an "echo" request.
     icmphdr->type = ICMP_ECHO;
     icmphdr->un.echo.sequence = 50;
     icmphdr->un.echo.id = 48;
     icmphdr->checksum = ip_checksum((unsigned short*)icmphdr, sizeof(struct icmphdr));
-    // prepare the address we're sending the packet to.
+    
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     inet_aton(dest_IP, &addr.sin_addr);
      
-    pid_t pid = fork();
-    if (pid == 0)  //sender
+    pid_t pid = fork(); // 2 processes
+    if (pid == 0)  //sender + child process
     {
         prctl(PR_SET_PDEATHSIG, SIGHUP); //kill this process when parent exits
-        //send initial packet
-        sendto(t, buf, sizeof(struct icmphdr), 0 /* flags */, (struct sockaddr*)&addr, sizeof(addr));
-	for(i = 0; i < load_num; i++){
-        //Send the packet
+        //send head ICMP packet
+	printf("Sending Head ICMP packet\n");
+        sendto(t, buf, sizeof(struct icmphdr), 0, (struct sockaddr*)&addr, sizeof(addr));
+	sleep(1);
+	for(i = 0; i < load_num; i++){   //send UDP train
            if (sendto (s, datagram, iph->tot_len ,  0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
            {
               perror("sendto failed");
@@ -297,17 +288,19 @@ int main(int argc, char* argv[])
            //Data send successfully
            else
            {
-              printf ("Packet Send. Length : %d \n" , iph->tot_len);
+              printf ("Packet Sent. Num: %d\n" , i+1);
            }
         }
         for (i = 0; i < icmp_num; i++){
-           //Send final packets
+           //Send tail ICMP packets
            sendto(t, buf, sizeof(struct icmphdr), 0, (struct sockaddr*)&addr, sizeof(addr));
-           sleep(sleep_time);
+           printf("Sent Num %d ICMP tail packet of %d\n",i+1,icmp_num);
+           printf("Entering Sleep Time of %d seconds\n",sleep_time);
+	   sleep(sleep_time);
         }
         close(s);
     }
-    else  //receiver
+    else  //receiver + parent process
     {
         int count = 0;
 	while(1){
@@ -317,21 +310,21 @@ int main(int argc, char* argv[])
            iphdr = (struct iphdr*)rbuf;
            icmphdr = (struct icmphdr*)(rbuf + (iphdr->ihl * 4));
            if (icmphdr->type == ICMP_ECHOREPLY){
-                printf("ICMPTIME\n");
-       		count++;
+       		count++;  //increment count when ICMP reply received
 	   }
-           if (count == 1)
+           if (count == 1 && icmphdr->type == ICMP_ECHOREPLY){
 		t1 = get_time();
+                printf("First ICMP reply received\n");
+	   }
            if (count == 2){
                 t2 = get_time();
-                printf("SUCCESS\n");
+                printf("Second ICMP reply received\n");
 		double s = t2-t1;
                 printf("%s %f\n",entropy,s);
 		close(s);
                 close(t);
 		exit(0);
            }
-        //printf("ICMP code: %u\nICMP type: %d\n",icmphdr->code,icmphdr->type);
         }
     } 
     return 0;
