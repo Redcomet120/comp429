@@ -56,7 +56,7 @@ if not input_list[1].isdigit():    #check port number
     print "Error encountered - exiting"
     sys.exit()
 
-if not (input_list[2] != 'H' or input_list[2] != 'L'):
+if input_list[2] != 'H' and input_list[2] != 'L':
     logging.error("Invalid Entropy Value parameter")
     print "Error encountered - exiting"
     sys.exit()
