@@ -11,9 +11,9 @@ def execute(line):  #used to execute the program with the entered parameters
    global difIP
    global newIP
    global master
+   global password
    script = 'script -c '
    end_script = '" results.txt > /dev/null'
-   password = ""
    if sudo and not master:
         password = getpass.getpass(prompt='Please Enter your sudo password: ') #used to enter root password 
         master = True 
@@ -54,22 +54,25 @@ def execute(line):  #used to execute the program with the entered parameters
              list = line.split()
              len_list = len(list)
              if oneLine:
-                logging.info("Now Reading Results")
+                logging.info("Now Reading Results\n")
                 print "Now Reading Results"
              	oneLine = False
+             logging.info(line)
 	     if len_list > 1:
 		entropy = list[len_list - 2]
                 value = list[len_list - 1]
                 if entropy == 'H' or entropy == 'L':  
 		    logging.info("Looks like the Program Successfully Completed")
                     print "Looks like the Program Successfully Completed"
-                    logging.info(entropy + " " + value)
 		    print entropy + " " + value
                     success = True
    f.close()
    if oneLine:
 	logging.info("No output from the program")
 	print "No output from the program"
+   else:
+	logging.info("Reading Results is Complete\n")
+        print "Reading Results is Complete"
    os.remove('results.txt')  #erase results file
    if not success:
     	logging.info("The Program Did Not Produce the Correct Output")
@@ -185,6 +188,7 @@ sudo = False
 difIP = False
 param = False
 master = False
+password = ""
 script_path = os.path.dirname(os.path.realpath(__file__))
 
 if len(sys.argv) != 2:
