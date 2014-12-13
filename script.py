@@ -15,8 +15,7 @@ def execute(line):  #used to execute the program with the entered parameters
    script = 'script -c '
    end_script = '" results.txt > /dev/null'
    if sudo and not master:
-        password = getpass.getpass(prompt='Please Enter your sudo password: ') #used to enter root password 
-        master = True 
+        rootPass() 
    if param:   #statement used when entering parameters manually
    	logging.info("Executing ./output " + line)
    	print "Executing ./output " + line
