@@ -26,7 +26,7 @@ def execute(line):  #used to execute the program with the entered parameters
    	else:
    	    line = '"./output ' + line
    else:    #used if using Edge Cases
-   	if not difIP:
+   	while not difIP:
 	    changeIP()
         logging.info("Executing ./output " + newIP + " " + line)
    	print "Executing ./output " + newIP + " " + line
@@ -80,8 +80,13 @@ def execute(line):  #used to execute the program with the entered parameters
    
    raw_input("Press Enter to continue...")
    print "Now Returning to Menu"
-   
 
+def rootPass(): #change root password
+   global master
+   global password
+   password = getpass.getpass(prompt='Please Enter your sudo password: ') #used to enter root password 
+   master = True 
+   
 def logfile(): #erase contents of log file
    if os.path.isfile('example.log'):  #check if log file exists
    	open('example.log', 'w').close() #erases contents of file
@@ -211,7 +216,7 @@ if not os.path.isfile('output'):  #check if compiled program exists
     sys.exit()
 
 z = '-1'
-while z != '9':  #Main Menu
+while z != '10':  #Main Menu
     param = False
     print ""
     if sudo:
@@ -227,7 +232,8 @@ while z != '9':  #Main Menu
     print "6 Clear Log File"
     print "7 Change Sudo"
     print "8 Change IP for Edge Cases"
-    print "9 Quit"
+    print "9 Change Root Password"
+    print "10 Quit"
     z = raw_input('What is your choice: ')
     if z == '1':
         param = True
@@ -246,6 +252,8 @@ while z != '9':  #Main Menu
 	changeSudo()
     elif z == '8':
         changeIP()
+    elif z == '9':
+        rootPass()
 
 print "Now Exiting"
 
