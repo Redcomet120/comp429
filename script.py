@@ -216,10 +216,10 @@ while z != '9':  #Main Menu
 	print "Sudo is not enabled"
     print ""
     print "1 Enter Parameters"
-    print "2 Edge Case:" 
-    print "3 Edge Case:"
-    print "4 Edge Case:"
-    print "5 Edge Case:"
+    print "2 Edge Case: Low Entropy 5 Packets TTL: 3" 
+    print "3 Edge Case: Low Entropy 5000 Packets TTL: 255"
+    print "4 Edge Case: High Entropy 5 Packets TTL: 3"
+    print "5 Edge Case: High Entropy 5000 Packets TTL: 255"
     print "6 Clear Log File"
     print "7 Change Sudo"
     print "8 Change IP for Edge Cases"
@@ -228,14 +228,14 @@ while z != '9':  #Main Menu
     if z == '1':
         param = True
         parameters()
-    elif z == '2':
-	execute("9876 H 1100 5 255 10 50")   #these can be modified to add new edge cases
+    elif z == '2':    #these can be modified to add new edge cases
+	execute("9876 L 1100 5 3 10 50")   
     elif z == '3':
-        execute("WORD")
+        execute("9876 L 1100 5000 255 10 50")
     elif z == '4':
-        execute("WORD")
+        execute("9876 H 1100 5 3 10 50")
     elif z == '5':
-        execute("WORD")
+        execute("9876 H 1100 5000 255 10 50")
     elif z == '6':
 	logfile()
     elif z == '7':
